@@ -43,13 +43,13 @@ if (.Platform$OS.type == "windows" && !file.exists("src/Makevars.win")) {
 unlink("R/rxode2parse_md5.R")
 
 cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
-include <- list.files("inst/include")
+include <- list.files("inst/include", pattern="rxode2parseStruct.h")
 #Rfiles <- list.files("R/", pattern = ".R")
 
 cmd <- file.path(R.home("bin"), "R")
 args <- c("CMD", "config")
 
-md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
+md5 <- digest::digest(c(lapply(c(#paste0("src/", cpp),
                                  paste0("inst/include/", include)#,
                                  #paste0("R/", Rfiles)
                                  ), digest::digest, file = TRUE),
@@ -101,7 +101,7 @@ def <- def[1:w]
 def <- gsub("=NULL", "", def)
 def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
 
-def <- unique(c(def, c("_sum", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord")))
+def <- unique(c(def, c("_sum", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord", "__assignFuns2")))
 
 w1 <- which(regexpr("dynamic start", l) != -1)
 l1 <- l[1:w1]
@@ -110,6 +110,14 @@ l1 <- l[1:w1]
 
 w2 <- which(regexpr("dynamic stop", l) != -1)
 l2 <- l[seq(w2, length(l))]
+
+w3 <- which(regexpr("assign start", l2) != -1)
+
+l3 <- l2[seq(w3, length(l2))]
+l2 <- l2[1:w3]
+
+w4 <- which(regexpr("assign stop", l3) != -1)
+l3 <- l3[seq(w4, length(l3))]
 
 dfP <- l[seq(w1+1, w2-1)]
 
@@ -134,7 +142,7 @@ def <- def[!(def %in% df$rxFun)]
 def <- def[!(def %in% df$fun)]
 
 dfStr <- deparse(df)
-dfStr[1] <- paste(".rxode2parseDf <- ", dfStr[1])
+dfStr[1] <- paste(".parseEnv$.rxode2parseDf <- ", dfStr[1])
 
 dfIni.R <- file("R/dfIni.R", "wb")
 writeLines(dfStr,
@@ -157,6 +165,9 @@ final <- c("#include <time.h>",
            "}",
            "void writeBody2(void) {",
            paste0("sAppendN(&sbOut, ", vapply(paste0(l2, "\n"), deparse2, character(1)), ", ", nchar(l2) + 1, ");"),
+           "}",
+           "void writeBody3(void) {",
+           paste0("sAppendN(&sbOut, ", vapply(paste0(l3, "\n"), deparse2, character(1)), ", ", nchar(l3) + 1, ");"),
            "}",
            "void writeFooter(void) {",
            paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),

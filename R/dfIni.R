@@ -1,4 +1,4 @@
-.rxode2parseDf <-  structure(list(rxFun = c("linCmtA", "linCmtB", "linCmtC", "rxnorm", 
+.parseEnv$.rxode2parseDf <-  structure(list(rxFun = c("linCmtA", "linCmtB", "linCmtC", "rxnorm", 
 "rxbinom", "rxnbinom", "rxnbinomMu", "rxcauchy", "rxchisq", "rxexp", 
 "rxf", "rxgeom", "rxgamma", "rxbeta", "rxpois", "rxt_", "rxunif", 
 "rxweibull", "rinorm", "ribinom", "rinbinom", "rinbinomMu", "ricauchy", 

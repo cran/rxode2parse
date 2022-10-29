@@ -29,6 +29,7 @@ sAppend(&sbOut, "#define _transit3P _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _assignFuns0 _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _assignFuns _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _rxord _rx%s%s%ld\n", extra, md5, __timeId++);
+sAppend(&sbOut, "#define __assignFuns2 _rx%s%s%ld\n", extra, md5, __timeId++);
 }
 void writeBody1(void) {
 sAppendN(&sbOut, "_getRxSolve_t _getRxSolve_;\n", 28);
@@ -271,6 +272,24 @@ sAppendN(&sbOut, "  if (_assign_ptr == NULL){\n", 28);
 sAppendN(&sbOut, "    _assignFuns0();\n", 20);
 sAppendN(&sbOut, "  }\n", 4);
 sAppendN(&sbOut, "}\n", 2);
+sAppendN(&sbOut, "void __assignFuns2(rx_solve rx,\n", 32);
+sAppendN(&sbOut, "                   rx_solving_options op,\n", 42);
+sAppendN(&sbOut, "                   t_F f,\n", 26);
+sAppendN(&sbOut, "                   t_LAG lag,\n", 30);
+sAppendN(&sbOut, "                   t_RATE rate,\n", 32);
+sAppendN(&sbOut, "                   t_DUR dur,\n", 30);
+sAppendN(&sbOut, "                   t_calc_mtime mtime,\n", 39);
+sAppendN(&sbOut, "                   t_ME me,\n", 28);
+sAppendN(&sbOut, "                   t_IndF indf,\n", 32);
+sAppendN(&sbOut, "                   t_getTime gettime,\n", 38);
+sAppendN(&sbOut, "                   t_locateTimeIndex timeindex,\n", 48);
+sAppendN(&sbOut, "                   t_handle_evidL handleEvid,\n", 46);
+sAppendN(&sbOut, "                   t_getDur getdur) {\n", 38);
+sAppendN(&sbOut, "  // assign start\n", 18);
+}
+void writeBody3(void) {
+sAppendN(&sbOut, "  // assign stop\n", 17);
+sAppendN(&sbOut, "}\n", 2);
 }
 void writeFooter(void) {
 sAppendN(&sbOut, "#undef _getRxSolve_\n", 20);
@@ -300,4 +319,5 @@ sAppendN(&sbOut, "#undef _transit3P\n", 18);
 sAppendN(&sbOut, "#undef _assignFuns0\n", 20);
 sAppendN(&sbOut, "#undef _assignFuns\n", 19);
 sAppendN(&sbOut, "#undef _rxord\n", 14);
+sAppendN(&sbOut, "#undef __assignFuns2\n", 21);
 }
