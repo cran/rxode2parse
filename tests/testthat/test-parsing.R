@@ -606,3 +606,95 @@ badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
 goodParse("Dotted initial conditions",
           paste(c("d/dt(C.A) = - 1",
                   "C.A(0) = A"), collapse="\n"))
+
+
+test_that("after isn't shown or garbled", {
+  t <-try(rxode2parse("a+b<-fun+fun  +  fun"))
+  expect_true(inherits(t, "try-error"))
+  print(attr(t,"condition")$message)
+  expect_true(regexpr("after", attr(t,"condition")$message)==-1)
+})
+
+test_that("throws parsing error with wrong number of arguments", {
+  .trans <- rxode2parseGetTranslation()
+  expect_error(rxode2parse("a= llikNorm(a, b, c, d, f)"))
+
+  .trans2 <- .trans
+  .w <- which(.trans2$rxFun=="llikNorm")
+  .trans2$argMax[.w] <- 4L
+  rxode2parseAssignTranslation(.trans2)
+
+  expect_error(rxode2parse("a= llikNorm(a, b, c, d, f)"))
+
+  .trans2$argMax[.w] <- 2L
+  rxode2parseAssignTranslation(.trans2)
+
+  expect_error(rxode2parse("a= llikNorm(a, b, c, d, f)"))
+
+  rxode2parseAssignTranslation(.trans)
+  .trans2 <- .trans
+  expect_true(rxode2parse("a=llikNorm(a, b, c)")$flags["thread"] == 1L)
+
+  # pretend that llikNorm is not thread safe
+  .trans2$threadSafe[.w] <- 0L
+  rxode2parseAssignTranslation(.trans2)
+
+  expect_true(rxode2parse("a=llikNorm(a, b, c)")$flags["thread"] == 0L)
+  rxode2parseAssignTranslation(.trans)
+
+  expect_error(rxode2parse("a=cos(b, c, d, e, f)"))
+})
+
+
+test_that("linear compartmental error", {
+  expect_error(rxode2parse('f(central) <- 1 + f_study1 * (STUDYID == "Study 1")\nka <- exp(tka + eta.ka)\ncl <- exp(tcl + eta.cl)\nv <- exp(tv + eta.v)\ncp <- linCmt()', linear=TRUE), NA)
+  expect_error(rxode2parse("params(THETA[1],THETA[2],THETA[3],THETA[4],THETA[5],THETA[6],ETA[1],ETA[2],ETA[3])\nrx_yj_~2\nrx_lambda_~1\nrx_hi_~1\nrx_low_~0\nrx_pred_=linCmtB(rx__PTR__, t, 0, 1, 1, 0, exp(ETA[2]+THETA[2]), exp(ETA[3]+THETA[3]), 0, 0, 0, 0, 0, 1, 0, 0, exp(ETA[1]+THETA[1]), 0, 1+(THETA[6]==1)*THETA[5], 0, 0)\nrx_r_=Rx_pow_di(THETA[4], 2)",
+                           code="rxode2parse_test_code.c"), NA)
+  expect_true(file.exists("rxode2parse_test_code.c"))
+  if (file.exists("rxode2parse_test_code.c")) {
+    lines <- readLines("rxode2parse_test_code.c")
+    unlink("rxode2parse_test_code.c")
+    expect_false(file.exists("rxode2parse_test_code.c"))
+    expect_true(all(regexpr("THETA[6]", lines, fixed=TRUE) == -1))
+  }
+
+  mv <- rxode2parse("params(THETA[1],THETA[2],THETA[3],THETA[4],THETA[5],THETA[6],ETA[1],ETA[2],ETA[3])\nrx_yj_~2\nrx_lambda_~1\nrx_hi_~1\nrx_low_~0\nrx_pred_=linCmtB(rx__PTR__, t, 0, 1, 1, 0, exp(ETA[2]+THETA[2]), exp(ETA[3]+THETA[3]), 0, 0, 0, 0, 0, 1, 0, 0, exp(ETA[1]+THETA[1]), 0, 1+(THETA[6]==1)*THETA[5], 0, 0)\nrx_r_=Rx_pow_di(THETA[4], 2)")
+  expect_false(any(mv$lhs == "rxlin___"))
+
+  rxode2parse("ka <- 1\ncl <- 3.5\nvc <- 40\nConc <- linCmt()\nalag(depot) <- 1", linear=TRUE, code="rxode2parse_test_code.c")
+
+  expect_true(file.exists("rxode2parse_test_code.c"))
+  if (file.exists("rxode2parse_test_code.c")) {
+    lines <- readLines("rxode2parse_test_code.c")
+    unlink("rxode2parse_test_code.c")
+    expect_false(file.exists("rxode2parse_test_code.c"))
+    expect_true(any(regexpr("_alag[(&_solveData->subjects[_cSub])->linCmt]", lines, fixed=TRUE) != -1))
+  }
+  expect_error(rxode2parse("rx_yj_~2\nrx_lambda_~1\nrx_hi_~1\nrx_low_~0\nrx_pred_=1000*linCmtB(rx__PTR__,t,0,1,1,0,exp(ETA[1]+THETA[2]),exp(THETA[3]),0,0,0,0,0,1,0,0,exp(THETA[1]),exp(THETA[6]),1,0,0)\nrx__sens_rx_pred__BY_ETA_1___=1000*exp(ETA[1]+THETA[2])*linCmtB(rx__PTR__,t,0,1,1,1,exp(ETA[1]+THETA[2]),exp(THETA[3]),0,0,0,0,0,1,0,0,exp(THETA[1]),exp(THETA[6]),1,0,0)\nrx_r_=1e+06*Rx_pow_di(linCmtB(rx__PTR__,t,0,1,1,0,exp(ETA[1]+THETA[2]),exp(THETA[3]),0,0,0,0,0,1,0,0,exp(THETA[1]),exp(THETA[6]),1,0,0),2)*Rx_pow_di(THETA[5],2)+Rx_pow_di(THETA[4],2)\nrx__sens_rx_r__BY_ETA_1___=2e+06*exp(ETA[1]+THETA[2])*linCmtB(rx__PTR__,t,0,1,1,0,exp(ETA[1]+THETA[2]),exp(THETA[3]),0,0,0,0,0,1,0,0,exp(THETA[1]),exp(THETA[6]),1,0,0)*linCmtB(rx__PTR__,t,0,1,1,1,exp(ETA[1]+THETA[2]),exp(THETA[3]),0,0,0,0,0,1,0,0,exp(THETA[1]),exp(THETA[6]),1,0,0)*Rx_pow_di(THETA[5],2)\n"), NA)
+})
+
+
+test_that("TIME conundrums", {
+
+  p <- rxode2parse("param(emax_fcfb,lec50,le0,let50_emax,propSd,etale0,TIME,PK);\ne0=exp(le0+etale0);\nemax=emax_fcfb;\nec50=exp(lec50);\net50_emax=exp(let50_emax);\nfoo=e0*(1+emax*(TIME/168)/(et50_emax+(TIME/168))*PK/(ec50+PK));\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~foo;\nrx_pred_~rx_pred_f_;\nrx_r_~(rx_pred_f_*propSd)^2;\nipredSim=rxTBSi(rx_pred_,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\nsim=rxTBSi(rx_pred_+sqrt(rx_r_)*err.foo,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\ncmt(foo);\ndvid(1);\n")
+
+  expect_false(any(p$params == "TIME"))
+  
+})
+
+
+test_that("pow problems", {
+  expect_error(rxode2parse("pow=3+4"), NA)
+
+  rxode2parse("pow=4\nif (CMT==5){pow = 3+1+pow(4, 3)}\npow2 = pow*2", code="rxode2parse_test_code.c")
+  expect_true(file.exists("rxode2parse_test_code.c"))
+  if (file.exists("rxode2parse_test_code.c")) {
+    lines <- readLines("rxode2parse_test_code.c")
+    unlink("rxode2parse_test_code.c")
+    expect_false(file.exists("rxode2parse_test_code.c"))
+    expect_true(any(regexpr("+pow(4,3)", lines, fixed=TRUE) != -1))
+    expect_true(any(regexpr("_rxNotFun_pow=", lines, fixed=TRUE) != -1))
+    expect_true(any(regexpr("=_rxNotFun_pow*2", lines, fixed=TRUE) != -1))
+    expect_true(any(regexpr("(_CMT==5)", lines, fixed=TRUE)) != -1)
+  }
+})

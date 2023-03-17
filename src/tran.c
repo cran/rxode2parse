@@ -88,6 +88,7 @@ int firstErrD=0;
 
 vLines sbPm, sbPmDt, sbNrmL;
 sbuf sbNrm;
+sbuf sbExtra;
 vLines depotLines, centralLines;
 
 const char *model_prefix = NULL;
@@ -219,6 +220,7 @@ void err_msg(int chk, const char *msg, int code)
 {
   if(!chk) {
     parseFree(0);
+    _rxode2parse_unprotect();
     Rf_errorcall(R_NilValue, "%s",msg);
   }
 }
@@ -233,17 +235,23 @@ void parseFreeLast(void) {
   sFree(&_bufw2);
 }
 
+sbuf sbErr1;
+sbuf sbErr2;
+
 void parseFree(int last) {
   sFree(&sb);
   sFree(&sbDt);
   sFree(&sbt);
   sFree(&sbNrm);
+  sFree(&sbExtra);
   sFree(&s_inits);
   sFree(&_bufw);
   sFree(&_bufw2);
   sFree(&firstErr);
   sFree(&_gbuf);
   sFree(&_mv);
+  sFree(&sbErr1);
+  sFree(&sbErr2);
   lineFree(&sbPm);
   lineFree(&sbPmDt);
   lineFree(&sbNrmL);
@@ -277,6 +285,16 @@ SEXP _rxode2parse_parseFreeSexp(SEXP last) {
   return R_NilValue;
 }
 
+char *alagLinCmtLine = NULL;
+char *fLinCmtLine = NULL;
+char *durLinCmtLine = NULL;
+char *rateLinCmtLine = NULL;
+
+char *alag1LinCmtLine = NULL;
+char *f1LinCmtLine = NULL;
+char *rate1LinCmtLine = NULL;
+char *dur1LinCmtLine = NULL;
+
 void reset(void) {
   // Reset sb/sbt string buffers
   parseFree(0);
@@ -286,7 +304,10 @@ void reset(void) {
   sIniTo(&sbDt, MXDER);
   sIniTo(&sbt, SBUF_MXBUF);
   sIniTo(&sbNrm, SBUF_MXBUF);
+  sIniTo(&sbExtra,SBUF_MXBUF);
   sIniTo(&_gbuf, 1024);
+  sIniTo(&sbErr1, SBUF_MXBUF);
+  sIniTo(&sbErr2, SBUF_MXBUF);
   sIni(&_mv);
   sClear(&_mv);
   sIniTo(&firstErr, SBUF_MXBUF);
@@ -391,6 +412,17 @@ void reset(void) {
   nmtime=0;
   syntaxErrorExtra=0;
   extraCmt=0;
+
+  // reset extra lines from linCmt()
+  alagLinCmtLine = NULL;
+  fLinCmtLine = NULL;
+  durLinCmtLine = NULL;
+  rateLinCmtLine = NULL;
+
+  alag1LinCmtLine = NULL;
+  f1LinCmtLine = NULL;
+  rate1LinCmtLine = NULL;
+  dur1LinCmtLine = NULL;
 }
 
 static void rxSyntaxError(struct D_Parser *ap);
@@ -466,7 +498,9 @@ void trans_internal(const char* parse_file, int isStr){
     err_msg((intptr_t) gBuf, "error: empty buf for FILE_to_parse\n", -2);
   }
   sFree(&sbNrm);
+  sFree(&sbExtra);
   sIniTo(&sbNrm, SBUF_MXBUF);
+  sIniTo(&sbExtra, SBUF_MXBUF);
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
@@ -484,9 +518,11 @@ void trans_internal(const char* parse_file, int isStr){
   }
 }
 
+
+extern int _rxode2parse_protected;
 static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                              SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn) {
-  _goodFuns = goodFuns;
+  _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   // Make sure buffers are initialized.
   isEsc=INTEGER(isEscIn)[0];
   fullPrint=INTEGER(fullPrintIn)[0];
@@ -503,6 +539,7 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   if (isString(prefix) && length(prefix) == 1){
     model_prefix = CHAR(STRING_ELT(prefix,0));
   } else {
+    _rxode2parse_unprotect();
     err_trans("model prefix must be specified");
   }
 
@@ -510,6 +547,7 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
     me_code = CHAR(STRING_ELT(inME,0));
   } else {
     freeP();
+    _rxode2parse_unprotect();
     err_trans("extra ME code must be specified");
   }
 
@@ -548,27 +586,35 @@ static inline void finalizeSyntaxError(void) {
     }
     if (firstErrD == 1) {
       firstErrD=0;
+      _rxode2parse_unprotect();
       err_trans(firstErr.s);
     } else {
+      _rxode2parse_unprotect();
       err_trans("syntax errors (see above)");
     }
   }
 }
 
+void _rxode2parse_assignTranslation(SEXP df);
+SEXP getRxode2ParseDf(void);
+
 SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn){
   const char *in = NULL;
+  _rxode2parse_assignTranslation(getRxode2ParseDf());
   int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn);
   in = CHAR(STRING_ELT(parse_file,0));
   trans_internal(in, isStr);
   SEXP lst = PROTECT(generateModelVars());
   finalizeSyntaxError();
   UNPROTECT(1);
+  _rxode2parse_unprotect();
   return lst;
 }
 
 SEXP _rxode2parse_parseModel(SEXP type){
   if (!sbPm.o){
+    _rxode2parse_unprotect();
     err_trans("model no longer loaded in memory");
   }
   int iT = INTEGER(type)[0];
@@ -633,6 +679,7 @@ void transIniNull(void) {
   sNull(&(sbt));
   sNull(&(firstErr));
   sNull(&(sbNrm));
+  sNull(&(sbExtra));
   sNull(&(sbOut));
   lineNull(&(sbPm));
   lineNull(&(sbPmDt));

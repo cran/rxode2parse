@@ -13,7 +13,7 @@
 #include "../inst/include/rxode2parseSbuf.h"
 
 SEXP _rxode2parse_codeLoaded(void);
-SEXP _rxode2parse_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv);
+SEXP _rxode2parse_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns);
 SEXP _rxode2parse_parseModel(SEXP type);
 SEXP _rxode2parse_isLinCmt(void);
 
@@ -31,6 +31,8 @@ SEXP _rxode2parse_rxode2parseSetRstudio(SEXP);
 SEXP _rxode2parse_calcDerived(SEXP ncmtSXP, SEXP transSXP, SEXP inp, SEXP sigdigSXP);
 
 SEXP _rxode2parse_parseFreeSexp(SEXP);
+
+SEXP _rxode2parse_rxUpdateTrans_(SEXP, SEXP, SEXP);
 
 double linCmtA(rx_solve *rx, unsigned int id, double t, int linCmt,
                int ncmt, int trans, double d_ka,
@@ -73,10 +75,77 @@ void _rxode2parse_assignFuns2(rx_solve rx,
                             t_handle_evidL handleEvid,
                             t_getDur getdur);
 
+SEXP _rxode2_parse_strncmpci(void);
+SEXP _rxode2parse_getWh(SEXP in);
+SEXP _rxode2parse_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                 SEXP, SEXP);
+SEXP _rxode2parse_linCmtA(SEXP linDat, SEXP linPar);
+
+SEXP _rxode2parse_etTransEvidIsObs(SEXP);
+SEXP _rxode2parse_forderForceBase(SEXP);
+SEXP _rxode2parse_rxSetIni0(SEXP);
+SEXP _rxode2parse_etTransParse(SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP, SEXP, SEXP);
+
+SEXP _rxode2parse_rxEtTransAsDataFrame_(SEXP);
+
+SEXP _rxode2parse_convertId_(SEXP x);
+SEXP _rxode2parse_get_sexp_unique( SEXP s );
+
+
+SEXP _rxode2parse_chin(SEXP x, SEXP table);
+SEXP _rxode2parse_getForder(void);
+int _rxode2parse_useForder(void);
+
+int get_sexp_uniqueL( SEXP s );
+
+ SEXP _rxode2parse_funPtrs(void) {
+  int pro = 0;
+  SEXP ret = PROTECT(allocVector(VECSXP, 7)); pro++;
+  SET_VECTOR_ELT(ret, 0, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_convertId_,
+                                             Rf_install("_rxode2parse_convertId_"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 1, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_get_sexp_unique,
+                                             Rf_install("_rxode2parse_get_sexp_unique"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 2, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_etTransParse,
+                                             Rf_install("_rxode2parse_etTransParse"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 3, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_chin,
+                                             Rf_install("_rxode2parse_chin"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 4, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_getForder,
+                                             Rf_install("_rxode2parse_getForder"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 5, R_MakeExternalPtrFn((DL_FUNC) &_rxode2parse_useForder,
+                                             Rf_install("_rxode2parse_useForder"),
+                                             R_NilValue));
+  SET_VECTOR_ELT(ret, 6, R_MakeExternalPtrFn((DL_FUNC) &get_sexp_uniqueL,
+                                             Rf_install("get_sexp_uniqueL"),
+                                             R_NilValue));
+  
+  SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SET_STRING_ELT(cls, 0, Rf_mkChar("rxode2parseFunPtrs"));
+  Rf_setAttrib(ret,R_ClassSymbol, cls);
+  UNPROTECT(pro);
+  return(ret);
+}
+
+
 void R_init_rxode2parse(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2parse_convertId_", (DL_FUNC) &_rxode2parse_convertId_, 1},
+    {"_rxode2parse_funPtrs", (DL_FUNC) &_rxode2parse_funPtrs, 0},
+    {"_rxode2parse_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2parse_rxEtTransAsDataFrame_, 1},
+    {"_rxode2parse_etTransParse", (DL_FUNC) &_rxode2parse_etTransParse, 8},
+    {"_rxode2parse_rxSetIni0", (DL_FUNC) &_rxode2parse_rxSetIni0, 1},
+    {"_rxode2parse_forderForceBase", (DL_FUNC) &_rxode2parse_forderForceBase, 1},
+    {"_rxode2parse_etTransEvidIsObs", (DL_FUNC) &_rxode2parse_etTransEvidIsObs, 1},
+    {"_rxode2parse_getClassicEvid", (DL_FUNC) &_rxode2parse_getClassicEvid, 7},
+    {"_rxode2parse_getWh", (DL_FUNC) &_rxode2parse_getWh, 1},
+    {"_rxode2_parse_strncmpci", (DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2parse_codeLoaded", (DL_FUNC) &_rxode2parse_codeLoaded, 0},
-    {"_rxode2parse_codegen", (DL_FUNC) &_rxode2parse_codegen, 6},
+    {"_rxode2parse_codegen", (DL_FUNC) &_rxode2parse_codegen, 7},
     {"_rxode2parse_parseModel", (DL_FUNC) &_rxode2parse_parseModel, 1},
     {"_rxode2parse_isLinCmt", (DL_FUNC) &_rxode2parse_isLinCmt, 0},
     {"_rxode2parse_trans", (DL_FUNC) &_rxode2parse_trans, 8},
@@ -88,6 +157,7 @@ void R_init_rxode2parse(DllInfo *info){
     {"_rxode2parse_rxQr", (DL_FUNC) &_rxode2parse_rxQr, 1},
     {"_rxode2parse_rxParseSetSilentErr", (DL_FUNC) _rxode2parse_rxParseSetSilentErr, 1},
     {"_rxode2parse_rxode2parseSetRstudio", (DL_FUNC) _rxode2parse_rxode2parseSetRstudio, 1},
+    {"_rxode2parse_rxUpdateTrans_", (DL_FUNC) _rxode2parse_rxUpdateTrans_, 3},
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.

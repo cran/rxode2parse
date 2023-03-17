@@ -23,8 +23,9 @@
 #include "../inst/include/rxode2parseSbuf.h"
 #include "tran.h"
 
+int rxstrcmpi(const char * str1, const char * str2);
 static inline int nodeTime(char *value) {
-  if (!strcmp("time",value)){
+  if (!rxstrcmpi("time",value)){
     aAppendN("t", 1);
     sAppendN(&sbt, "t", 1);
     return 1;
@@ -41,8 +42,17 @@ static inline int nodeCmt(char *value) {
   return 0;
 }
 
+static inline int nodeAmt(char *value) {
+  if (!rxstrcmpi("AMT",value)){
+    aAppendN("amt", 3);
+    sAppendN(&sbt, "amt", 3);
+    return 1;
+  }
+  return 0;
+}
+ 
 static inline int nodeTlast(char *value) {
-  if (!strcmp("tlast",value)){
+  if (!rxstrcmpi("tlast",value)){
     aAppendN("_solveData->subjects[_cSub].tlast", 33);
     sAppendN(&sbt, "tlast", 5);
     return 1;
