@@ -1,6 +1,6 @@
-5cb701ed38ea1fec3bb567db9fdfcebd *DESCRIPTION
+3303d2508b70341d16e5f0e9b634cba5 *DESCRIPTION
 580a57e945dd6e2c184bc488835e0736 *NAMESPACE
-0b3415d68c00ddcd70b53dd152b5d715 *NEWS.md
+009ebcfaf35712697fd8249796a50616 *NEWS.md
 e07eb8059da406242535c6015fa3c08a *R/000.R
 9236875b9dd9b3efad20d4253b8e7919 *R/RcppExports.R
 28b2131686b7203dc3fc078094c6f5c1 *R/d.R
@@ -55,7 +55,7 @@ ace33668a025debacad1ae787e4b0b3d *man/rxode2parseD.Rd
 558a0ba4da8ee628c2e54b0e3587a328 *man/rxode2parseGetPointerAssignment.Rd
 5b63d9c8d61ab7db9d99c95003575302 *man/rxode2parseGetTranslation.Rd
 b1c77ccaaa90e2635c16b418b709c0c3 *man/rxode2parseMd5.Rd
-b20f26ae96cf92168af5f19288897341 *src/Makevars.in
+079f7bca469efba81efbf44275376d81 *src/Makevars.in
 736bdd0357e821676053d52a4f49f29a *src/RcppExports.cpp
 29acf784f7276f5a524cee36758311a6 *src/codegen.c
 27f7127c841d24293876f70325330402 *src/codegen.h
