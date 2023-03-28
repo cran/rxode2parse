@@ -1,6 +1,6 @@
-3303d2508b70341d16e5f0e9b634cba5 *DESCRIPTION
+7f384f58188e8fe061026995864bdfc3 *DESCRIPTION
 580a57e945dd6e2c184bc488835e0736 *NAMESPACE
-009ebcfaf35712697fd8249796a50616 *NEWS.md
+efc26c30676ed3392ef0195d94eb1795 *NEWS.md
 e07eb8059da406242535c6015fa3c08a *R/000.R
 9236875b9dd9b3efad20d4253b8e7919 *R/RcppExports.R
 28b2131686b7203dc3fc078094c6f5c1 *R/d.R
@@ -12,7 +12,7 @@ fb3df781dd080ad2e07e52fbaff093c4 *R/print.R
 9e4da0b8e22caee6cb59de2a73da3010 *R/rxParseSuppressMsg.R
 cf4f5790b9efb376dcad05d8739cb2d0 *R/rxode2parse_md5.R
 8227f38d547a57cc9a0c84448b5def08 *R/tran.R
-0822324683d2f9488c16855c1741d295 *R/utils.R
+129c734fdff009ef29b3c9b7b1bce2de *R/utils.R
 ee407d441356b37902cfcf5296f793c9 *R/zzz.R
 29a2a21896e953c0ff67cf2282bfff1c *README.md
 c71b95dce55ec8b932ddabc867897c07 *build/refresh.R
@@ -29,7 +29,7 @@ ecad170141875c3e9b8c995a2c8af60e *inst/include/rxode2parseGetTime.h
 78c27d65840a1f6986ab7cce76a43e4b *inst/include/rxode2parseHandleEvid.h
 8d2bc8d66323b913ae295221e46f3b26 *inst/include/rxode2parseSbuf.h
 696795d4a5a6b03e37dee99968203c72 *inst/include/rxode2parseStruct.h
-15470b45162990af0f6bb98af32947ed *inst/include/rxode2parseVer.h
+0ab22838018a2f7a1716dfd6a9fe094a *inst/include/rxode2parseVer.h
 33d161e4f36d8d1ed74c11eeef3d485a *inst/include/rxode2parse_control.h
 64107102dcb0e88951f5dd295b51cad8 *inst/include/sbuf.c
 f27ed0b06d5c3cba54d64dd1e8cd4d3d *inst/tools/workaround.R
