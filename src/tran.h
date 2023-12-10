@@ -35,6 +35,8 @@ lhs symbols?
   int *idi;       /* should ith state variable be ignored 0/1 */
   int *idu;       /* Has the ith state been used in a derivative expression? */
   int *lag;  // Lag number (if present)
+  int *alag; // absorption lag compartments seen
+  int alagn;
   int *dvid;
   int dvidn;
   int ix;                       /* ith of curr symbol */
@@ -268,8 +270,8 @@ extern char *gBuf;
 extern int gBufFree;
 extern int gBufLast;
 
-extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur, 
-  good_jac, extraCmt, badMd5;
+extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur,
+  good_jac, extraCmt, badMd5, maxUdf;
 extern unsigned int found_jac, nmtime;
 
 extern sbuf sbNrm;
@@ -329,7 +331,7 @@ static inline int allSpaces(char *v2) {
 
 void parseFree(int last);
 
-#define err_trans(chr) Rf_errorcall(R_NilValue, _(chr));
+#define err_trans(chr) Rf_errorcall(R_NilValue, "%s", _(chr));
 
 void _rxode2parse_unprotect(void);
 

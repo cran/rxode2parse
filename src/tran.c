@@ -61,8 +61,9 @@ int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_syntax_require_ode_first 
 extern D_ParserTables parser_tables_rxode2parse;
 
 unsigned int found_jac = 0, nmtime=0;
-int rx_syntax_allow_ini = 1, 
-  maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0;
+int rx_syntax_allow_ini = 1,
+  maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0,
+  maxUdf=0;
 
 sbuf s_inits;
 
@@ -263,6 +264,7 @@ void parseFree(int last) {
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
   R_Free(tb.lag);
+  R_Free(tb.alag);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -294,6 +296,8 @@ char *alag1LinCmtLine = NULL;
 char *f1LinCmtLine = NULL;
 char *rate1LinCmtLine = NULL;
 char *dur1LinCmtLine = NULL;
+
+SEXP _rxode2parse_resetUdf(void);
 
 void reset(void) {
   // Reset sb/sbt string buffers
@@ -334,6 +338,8 @@ void reset(void) {
   tb.idi	= R_Calloc(MXDER, int);
   tb.idu	= R_Calloc(MXDER, int);
   tb.lag	= R_Calloc(MXSYM, int);
+  tb.alag   = R_Calloc(MXSYM, int);
+  tb.alagn  = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;
@@ -423,6 +429,7 @@ void reset(void) {
   f1LinCmtLine = NULL;
   rate1LinCmtLine = NULL;
   dur1LinCmtLine = NULL;
+  _rxode2parse_resetUdf();
 }
 
 static void rxSyntaxError(struct D_Parser *ap);
@@ -626,7 +633,7 @@ SEXP _rxode2parse_parseModel(SEXP type){
       SET_STRING_ELT(pm, i, mkChar(sbPmDt.line[i]));
     }
     break;
-    
+
   default:
     pm = PROTECT(allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){

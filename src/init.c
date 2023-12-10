@@ -85,7 +85,8 @@ SEXP _rxode2parse_etTransEvidIsObs(SEXP);
 SEXP _rxode2parse_forderForceBase(SEXP);
 SEXP _rxode2parse_rxSetIni0(SEXP);
 SEXP _rxode2parse_etTransParse(SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP, SEXP);
+                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP);
 
 SEXP _rxode2parse_rxEtTransAsDataFrame_(SEXP);
 
@@ -123,7 +124,7 @@ int get_sexp_uniqueL( SEXP s );
   SET_VECTOR_ELT(ret, 6, R_MakeExternalPtrFn((DL_FUNC) &get_sexp_uniqueL,
                                              Rf_install("get_sexp_uniqueL"),
                                              R_NilValue));
-  
+
   SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(cls, 0, Rf_mkChar("rxode2parseFunPtrs"));
   Rf_setAttrib(ret,R_ClassSymbol, cls);
@@ -131,13 +132,14 @@ int get_sexp_uniqueL( SEXP s );
   return(ret);
 }
 
+double _rxode2parse_evalUdf(const char *fun, int n, const double *args);
 
 void R_init_rxode2parse(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2parse_convertId_", (DL_FUNC) &_rxode2parse_convertId_, 1},
     {"_rxode2parse_funPtrs", (DL_FUNC) &_rxode2parse_funPtrs, 0},
     {"_rxode2parse_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2parse_rxEtTransAsDataFrame_, 1},
-    {"_rxode2parse_etTransParse", (DL_FUNC) &_rxode2parse_etTransParse, 8},
+    {"_rxode2parse_etTransParse", (DL_FUNC) &_rxode2parse_etTransParse, 11},
     {"_rxode2parse_rxSetIni0", (DL_FUNC) &_rxode2parse_rxSetIni0, 1},
     {"_rxode2parse_forderForceBase", (DL_FUNC) &_rxode2parse_forderForceBase, 1},
     {"_rxode2parse_etTransEvidIsObs", (DL_FUNC) &_rxode2parse_etTransEvidIsObs, 1},
@@ -158,9 +160,10 @@ void R_init_rxode2parse(DllInfo *info){
     {"_rxode2parse_rxParseSetSilentErr", (DL_FUNC) _rxode2parse_rxParseSetSilentErr, 1},
     {"_rxode2parse_rxode2parseSetRstudio", (DL_FUNC) _rxode2parse_rxode2parseSetRstudio, 1},
     {"_rxode2parse_rxUpdateTrans_", (DL_FUNC) _rxode2parse_rxUpdateTrans_, 3},
-    {NULL, NULL, 0} 
+    {NULL, NULL, 0}
   };
   // C callable to assign environments.
+  R_RegisterCCallable("rxode2parse", "_rxode2parse_evalUdf", (DL_FUNC) &_rxode2parse_evalUdf);
   R_RegisterCCallable("rxode2parse", "_rxode2parse_calcDerived", (DL_FUNC) &_rxode2parse_calcDerived);
   R_RegisterCCallable("rxode2parse", "_rxode2parse_parseFree", (DL_FUNC) &_rxode2parse_parseFree);
   R_RegisterCCallable("rxode2parse", "_rxode2parse_trans", (DL_FUNC) &_rxode2parse_trans);

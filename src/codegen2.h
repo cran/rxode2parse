@@ -3,6 +3,7 @@
 unsigned long int __timeId=0;
 void writeHeader(const char *md5, const char *extra) {
 sAppend(&sbOut, "#define _getRxSolve_ _rx%s%s%ld\n", extra, md5, __timeId++);
+sAppend(&sbOut, "#define _evalUdf _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _solveData _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _assign_ptr _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _rxRmModelLib _rx%s%s%ld\n", extra, md5, __timeId++);
@@ -20,6 +21,7 @@ sAppend(&sbOut, "#define _rxode2_rxAssignPtr _rx%s%s%ld\n", extra, md5, __timeId
 sAppend(&sbOut, "#define _rxQr _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _compareFactorVal _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _sum _rx%s%s%ld\n", extra, md5, __timeId++);
+sAppend(&sbOut, "#define _udf _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _sign _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _prod _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _max _rx%s%s%ld\n", extra, md5, __timeId++);
@@ -31,10 +33,11 @@ sAppend(&sbOut, "#define _assignFuns _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define _rxord _rx%s%s%ld\n", extra, md5, __timeId++);
 sAppend(&sbOut, "#define __assignFuns2 _rx%s%s%ld\n", extra, md5, __timeId++);
 }
-void writeBody1(void) {
+void writeBody0(void) {
 sAppendN(&sbOut, "_getRxSolve_t _getRxSolve_;\n", 28);
 sAppendN(&sbOut, "_simfun simeps;\n", 16);
 sAppendN(&sbOut, "_simfun simeta;\n", 16);
+sAppendN(&sbOut, "_udf_type _evalUdf=NULL;\n", 25);
 sAppendN(&sbOut, "rx_solve *_solveData=NULL;\n", 27);
 sAppendN(&sbOut, "rxode2_assign_ptr _assign_ptr=NULL;\n", 36);
 sAppendN(&sbOut, "_rxRmModelLibType _rxRmModelLib=NULL;\n", 38);
@@ -135,6 +138,8 @@ sAppendN(&sbOut, "rxode2_llikCauchyFun _llikCauchy;\n", 34);
 sAppendN(&sbOut, "rxode2_llikCauchyFun _llikCauchyDlocation;\n", 43);
 sAppendN(&sbOut, "rxode2_llikCauchyFun _llikCauchyDscale;\n", 40);
 sAppendN(&sbOut, "rxode2_compareFactorVal_fn _compareFactorVal;\n", 46);
+}
+void writeBody1(void) {
 sAppendN(&sbOut, "double _prod(double *input, double *p, int type, int n, ...){\n", 62);
 sAppendN(&sbOut, "  va_list valist;\n", 18);
 sAppendN(&sbOut, "  va_start(valist, n);\n", 23);
@@ -143,6 +148,15 @@ sAppendN(&sbOut, "    input[i] = va_arg(valist, double);\n", 39);
 sAppendN(&sbOut, "  }\n", 4);
 sAppendN(&sbOut, "  va_end(valist);\n", 18);
 sAppendN(&sbOut, "  return _prodPS(input, p, n, type);\n", 37);
+sAppendN(&sbOut, "}\n", 2);
+sAppendN(&sbOut, "double _udf(const char *funName, double *input, int n, ...) {\n", 62);
+sAppendN(&sbOut, "  va_list valist;\n", 18);
+sAppendN(&sbOut, "  va_start(valist, n);\n", 23);
+sAppendN(&sbOut, "  for (unsigned int i = 0; i < n; i++){\n", 40);
+sAppendN(&sbOut, "    input[i] = va_arg(valist, double);\n", 39);
+sAppendN(&sbOut, "  }\n", 4);
+sAppendN(&sbOut, "  va_end(valist);\n", 18);
+sAppendN(&sbOut, "  return _evalUdf(funName, n, input);\n", 38);
 sAppendN(&sbOut, "}\n", 2);
 sAppendN(&sbOut, "double _sum(double *input, double *pld, int m, int type, int n, ...){\n", 70);
 sAppendN(&sbOut, "  va_list valist;\n", 18);
@@ -249,6 +263,7 @@ sAppendN(&sbOut, "  if (ISNA(podo)) podo = 0.0;\n", 30);
 sAppendN(&sbOut, "  return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));\n", 83);
 sAppendN(&sbOut, "}\n", 2);
 sAppendN(&sbOut, "void _assignFuns0(void) {\n", 26);
+sAppendN(&sbOut, "  _evalUdf = (_udf_type) R_GetCCallable(\"rxode2parse\", \"_rxode2parse_evalUdf\");\n", 80);
 sAppendN(&sbOut, "  _getRxSolve_ = (_getRxSolve_t) R_GetCCallable(\"rxode2\",\"getRxSolve_\");\n", 73);
 sAppendN(&sbOut, "  _assign_ptr=(rxode2_assign_ptr) R_GetCCallable(\"rxode2\",\"rxode2_assign_fn_pointers\");\n", 88);
 sAppendN(&sbOut, "  _rxRmModelLib=(_rxRmModelLibType) R_GetCCallable(\"rxode2\",\"rxRmModelLib\");\n", 77);
@@ -296,6 +311,7 @@ sAppendN(&sbOut, "}\n", 2);
 }
 void writeFooter(void) {
 sAppendN(&sbOut, "#undef _getRxSolve_\n", 20);
+sAppendN(&sbOut, "#undef _evalUdf\n", 16);
 sAppendN(&sbOut, "#undef _solveData\n", 18);
 sAppendN(&sbOut, "#undef _assign_ptr\n", 19);
 sAppendN(&sbOut, "#undef _rxRmModelLib\n", 21);
@@ -313,6 +329,7 @@ sAppendN(&sbOut, "#undef _rxode2_rxAssignPtr\n", 27);
 sAppendN(&sbOut, "#undef _rxQr\n", 13);
 sAppendN(&sbOut, "#undef _compareFactorVal\n", 25);
 sAppendN(&sbOut, "#undef _sum\n", 12);
+sAppendN(&sbOut, "#undef _udf\n", 12);
 sAppendN(&sbOut, "#undef _sign\n", 13);
 sAppendN(&sbOut, "#undef _prod\n", 13);
 sAppendN(&sbOut, "#undef _max\n", 12);

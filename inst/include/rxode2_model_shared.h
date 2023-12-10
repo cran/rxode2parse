@@ -3,8 +3,8 @@
 #include <rxode2.h>
 #include <float.h>
 
-#define _evid (&_solveData->subjects[_cSub])->evid[(&_solveData->subjects[_cSub])->ix[(&_solveData->subjects[_cSub])->idx]]
-#define amt (isDose(_evid) ?  (&_solveData->subjects[_cSub])->dose[(&_solveData->subjects[_cSub])->ixds] : NA_REAL)
+#define _evid getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(&_solveData->subjects[_cSub])->idx])
+#define amt (isDose(_evid) ?  getDose((&_solveData->subjects[_cSub]),(&_solveData->subjects[_cSub])->ixds) : NA_REAL)
 #define JAC_Rprintf Rprintf
 #define _idx (&_solveData->subjects[_cSub])->idx
 #define JAC0_Rprintf if ( (&_solveData->subjects[_cSub])->jac_counter == 0) Rprintf
@@ -12,10 +12,10 @@
 #define ODE0_Rprintf if ( (&_solveData->subjects[_cSub])->dadt_counter == 0) Rprintf
 #define LHS_Rprintf Rprintf
 #define _safe_log(a) (&_solveData->safeZero ? (((a) <= 0) ? log(DBL_EPSILON) : log(a)) : log(a))
-#define safe_zero(a) (&_solveData->safeZero ? ((a) == 0 ? DBL_EPSILON : ((double)a)) : ((double)a))
-#define _as_zero(a) (&_solveData->safeZero && fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : ((double)a))
-#define _as_dbleps(a) (&_solveData->safeZero && fabs(a) < sqrt(DBL_EPSILON) ? (((double)a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : ((double) a))
-#define _as_dbleps2(a) (&_solveData->safeZero && fabs(a) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON) : ((double)a))
+#define safe_zero(a) (&_solveData->safeZero ? ((a) == 0 ? DBL_EPSILON : ((double)(a))) : ((double)(a)))
+#define _as_zero(a) (&_solveData->safeZero && fabs((double)(a)) < sqrt(DBL_EPSILON) ? 0.0 : ((double)(a)))
+#define _as_dbleps(a) (&_solveData->safeZero && fabs((double)a) < sqrt(DBL_EPSILON) ? (((double)(a)) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : ((double)(a)))
+#define _as_dbleps2(a) (&_solveData->safeZero && fabs((double)(a)) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON) : ((double)(a)))
 #define factorial(a) exp(lgamma1p(a))
 #define sign_exp(sgn, x)(((sgn) > 0.0) ? exp(x) : (((sgn) < 0.0) ? -exp(x) : 0.0))
 #define Rx_pow(a, b) (&_solveData->useStdPow ? pow(a, b) : R_pow(a, b))
@@ -55,8 +55,8 @@
 // FIXME: need to use same scheme here
 #define rnormV(ind, x,y) rxnormV(ind,x,y)
 #define rnormV1(ind, id, x) rxnormV(ind, id, x, 1.0)
-  
-#undef rcauchy 
+
+#undef rcauchy
 #define rcauchy(ind, x, y) rxcauchy(ind,x,y)
 #define rxcauchy1(x) rxcauchy(&_solveData->subjects[_cSub],x, 1.0)
 #define ricauchy1(id, x) ricauchy(&_solveData->subjects[_cSub], id, x, 1.0)
@@ -240,6 +240,7 @@ typedef SEXP (*_rxGetModelLibType)(const char *s);
 typedef  SEXP (*_rx_asgn) (SEXP objectSEXP);
 typedef int(*_rxIsCurrentC_type)(SEXP);
 typedef double(*_rxSumType)(double *, int, double *, int, int);
+typedef double(*_udf_type)(const char *fun, int, double *);
 
 typedef void(*_simfun)(int id);
 

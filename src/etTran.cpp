@@ -6,7 +6,7 @@
 #include <Rcpp.h>
 #include <algorithm>
 #include "../inst/include/rxode2parse.h"
-#include "timsort.h"
+#include "../inst/include/timsort.h"
 #include "needSortDefines.h"
 #define SORT gfx::timsort
 
@@ -30,6 +30,8 @@ using namespace Rcpp;
 
 #define getRxFn getRxParseFn
 
+extern int fastFactorDataHasNa;
+
 static inline bool rxIsNumInt(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == 13) {
@@ -46,10 +48,10 @@ static inline CharacterVector asCv(SEXP in, const char *what) {
 #ifdef asError
     REprintf(_("'%s' needs to be a vector of strings"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be a vector of strings"), what);
 #endif
-  } 
+  }
   return as<CharacterVector>(in);
 }
 
@@ -110,8 +112,6 @@ static inline bool asBool(SEXP in, const char *what) {
   }
   return as<bool>(in);
 }
-
-
 
 bool _rxode2parse_found = false;
 Environment _rxode2parse;
@@ -313,10 +313,10 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
             warn = warn + std::to_string(warnDvid[i]) + ", ";
           }
           warn = warn + std::to_string(warnDvid[warnDvid.size()-1]);
-          Rf_warningcall(R_NilValue, warn.c_str());
+          Rf_warningcall(R_NilValue, "%s", warn.c_str());
         }
         if (warnConvertDvid.size() > 0){
-          Rf_warningcall(R_NilValue, warnC.c_str());
+          Rf_warningcall(R_NilValue, "%s", warnC.c_str());
         }
         return out;
       } else {
@@ -451,6 +451,33 @@ bool rxode2parseIsIntegerish(SEXP in) {
   return as<bool>(isIntegerish(in));
 }
 
+RObject etTranGetAttrKeep(SEXP in) {
+  RObject cur = as<RObject>(in);
+  std::vector<std::string> attr = cur.attributeNames();
+  if (cur.hasAttribute("levels")) {
+    List ret(attr.size()-1);
+    CharacterVector retN(attr.size()-1);
+    unsigned int j = 0;
+    for (unsigned int i = 0; i < attr.size(); ++i) {
+      if (attr[i] != "levels") {
+        retN[j] = attr[i];
+        ret[j] = cur.attr(attr[i]);
+        j++;
+      }
+    }
+    ret.attr("names") = retN;
+    return as<RObject>(ret);
+  }
+  List ret(attr.size());
+  CharacterVector retN(attr.size());
+  for (unsigned int i = 0; i < attr.size(); ++i) {
+    retN[i] = attr[i];
+    ret[i] = cur.attr(attr[i]);
+  }
+  ret.attr("names") = retN;
+  return as<RObject>(ret);
+}
+
 //' Event translation for rxode2
 //'
 //' @param inData Data frame to translate
@@ -474,7 +501,18 @@ bool rxode2parseIsIntegerish(SEXP in) {
 //' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 //'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //'
-//' 
+//' @param addlKeepsCov This determines if the additional dosing items
+//'   repeats the dose only (`FALSE`) or keeps the covariates at the
+//'   record of the dose (`TRUE`)
+//'
+//' @param addlDropSs When there are steady state doses with an `addl`
+//'   specification the steady state flag is dropped with repeated
+//'   doses (when `TRUE`) or retained (when `FALSE`)
+//'
+//' @param ssAtDoseTime Boolean that when `TRUE` back calculates the
+//'   steady concentration at the actual time of dose, otherwise when
+//'   `FALSE` the doses are shifted
+//'
 //' @return Object for solving in rxode2
 //'
 //' @keywords internal
@@ -484,7 +522,10 @@ bool rxode2parseIsIntegerish(SEXP in) {
 List etTransParse(List inData, List mv, bool addCmt=false,
                   bool dropUnits=false, bool allTimeVar=false,
                   bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-                  CharacterVector keep = CharacterVector(0)){
+                  CharacterVector keep = CharacterVector(0),
+                  bool addlKeepsCov=false,
+                  bool addlDropSs = true,
+                  bool ssAtDoseTime=true) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -498,6 +539,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     combineDvidB = as<bool>(getOption("rxode2.combine.dvid", true));
   }
   IntegerVector curDvid = clone(as<IntegerVector>(mv[RxMv_dvid]));
+  IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
   CharacterVector trans = mv[RxMv_trans];
   if (Rf_inherits(inData,"rxEtTran")){
     CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
@@ -560,9 +602,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   bool allBolus = true;
   bool allInf = true;
   int mxCmt = 0;
-  std::vector<int> keepI(keep.size(), 0);
-
-  for (i = lName.size(); i--;){
+  std::vector<int> keepI(keep.size(), 0);  for (i = lName.size(); i--;){
     tmpS0= as<std::string>(lName[i]);
     tmpS = as<std::string>(lName[i]);
     std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::tolower);
@@ -634,7 +674,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
         wKeep += " " + as<std::string>(keep[j]);
       }
     }
-    Rf_warningcall(R_NilValue, wKeep.c_str());
+    Rf_warningcall(R_NilValue, "%s", wKeep.c_str());
   }
   List covUnits(covCol.size());
   CharacterVector covUnitsN(covCol.size());
@@ -782,6 +822,8 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   idxOutput.reserve(resSize);
   std::vector<int> cens;
   cens.reserve(resSize);
+  std::vector<int> nObsId;
+
 
 #ifdef rxSolveT
   REprintf("  Time3: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -804,6 +846,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       idInt = 1;
     }
     inId = convertId_(inData[idCol]);//as<IntegerVector>();
+    if (fastFactorDataHasNa == 1) stop(_("'id' cannot have NA values"));
     idLvl = Rf_getAttrib(inId, R_LevelsSymbol);
   } else {
     idLvl = CharacterVector::create("1");
@@ -951,6 +994,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   int cmt99;  //= amt[i]-amt100*100;
   int cevid;
   int nevid;
+  int nevidLag;
   int caddl;
   double ctime;
   double cii;
@@ -959,6 +1003,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   int curIdx=0;
   double cdv, climit;
   int nobs=0, ndose=0;
+
   int ccens=0;
   bool warnCensNA=false;
   bool censNone=true;
@@ -975,7 +1020,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   double lastTime = NA_REAL;
   bool hasReset = false;
   double maxShift = 0;
-
+  bool warnNaTime=false;
   for (int i = 0; i < inTime.size(); i++) {
     if (idCol == -1) cid = 1;
     else cid = inId[i];
@@ -993,6 +1038,10 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       }
     }
     ctime=inTime[i];
+    if (ISNA(ctime)) {
+      warnNaTime=true;
+      continue;
+    }
     // REprintf("lastId: %d; cid: %d, lastTime: %f, ctime %f\n", lastId, cid, lastTime, ctime);
     if (IntegerVector::is_na(lastId)) {
       lastId = cid;
@@ -1020,6 +1069,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     else cii = inIi[i];
     if (ISNA(cii)) cii=0.0;
 
+    if (cid == NA_INTEGER) stop(_("'id' cannot be 'NA'"));
     if (std::find(allId.begin(), allId.end(), cid) == allId.end()){
       allId.push_back(cid);
       // New ID
@@ -1055,7 +1105,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       flg=40;
     }
 
-    if (cmtCol != -1){
+    if (cmtCol != -1) {
       tmpCmt = inCmt[i];
       if (inCmt[i] == 0 || IntegerVector::is_na(inCmt[i])){
         if (evidCol == -1){
@@ -1079,6 +1129,21 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     }
     // CMT flag
     else cmt = tmpCmt;
+    // see if you need to adjust for lagged
+    if (ssAtDoseTime) {
+      if (flg == 10 || flg == 20) {
+        for (int jj = 0; jj < curAlag.size(); ++jj) {
+          if (cmt == curAlag[jj]) {
+            if (flg == 10) {
+              flg = 9;
+            } else {
+              flg = 19;
+            }
+            break;
+          }
+        }
+      }
+    }
     if (cmt <= 99){
       cmt100=0;
       cmt99=cmt;
@@ -1212,35 +1277,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       if (flg != 1){
         flg=1;
       }
-      if (ISNA(ctime)){
-        id.push_back(cid);
-        evid.push_back(2);
-        cmtF.push_back(cmt);
-        time.push_back(ctime);
-        amt.push_back(NA_REAL);
-        ii.push_back(0.0);
-        idxInput.push_back(i);
-        cens.push_back(ccens);
-        if (ccens!=0) censNone=false;
-        if (ccens == 1 && !std::isinf(climit)){
-          // limit should be lower than dv
-          if (cdv < climit){
-            dv.push_back(climit);
-            limit.push_back(cdv);
-            swapDvLimit=true;
-          } else if (cdv == climit){
-            stop(_("'limit' (%f) cannot equal 'dv' (%f) id: %s row: %d"), climit, cdv, CHAR(idLvl[cid-1]), i+1);
-          } else {
-            dv.push_back(cdv);
-            limit.push_back(climit);
-          }
-        } else {
-          dv.push_back(cdv);
-          limit.push_back(climit);
-        }
-        idxOutput.push_back(curIdx);curIdx++;
-        cevid = -1;
-      } else {
+      {
         bool goodCmt = false;
         int cmpCmt;
         if ((curDvid.size()) > 1){
@@ -1330,6 +1367,9 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     case 1:
       if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=%d id: %s row: %d"), cevid, CHAR(idLvl[cid-1]), i+1);
+      }
+      if (amtCol == -1) {
+        stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
       if (cevid == 7) {
         flg = 50;
@@ -1427,6 +1467,10 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=4 id: %s row: %d"), CHAR(idLvl[cid-1]), i+1);
       }
+      if (amtCol == -1) {
+        stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
+      }
+
       id.push_back(cid);
       evid.push_back(3);
       cmtF.push_back(cmt);
@@ -1452,6 +1496,9 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       break;
     case 5: // replace
       if (rateI != 0) stop(_("cannot have an infusion event with a replacement event (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+      if (amtCol == -1) {
+        stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
+      }
       rateI=4;
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
       allInf=false;
@@ -1459,6 +1506,9 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       break;
     case 6: // multiply
       if (rateI != 0) stop(_("cannot have an infusion event with a multiplication event (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+      if (amtCol == -1) {
+        stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
+      }
       rateI=5;
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
       allInf=false;
@@ -1494,7 +1544,11 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       }
       ii.push_back(cii);
       bool keepIIadl = false;
-      if ((flg == 10 || flg == 20 || flg == 40) && caddl > 0){
+      bool addLagged = false;
+      if (flg == 9 || flg == 19) {
+        keepIIadl = true;
+        addLagged = true;
+      } else if ((flg == 10 || flg == 20 || flg == 40) && caddl > 0){
         keepIIadl = true;
         //stop(_("'ss' with 'addl' not supported (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
       }
@@ -1505,12 +1559,33 @@ List etTransParse(List inData, List mv, bool addCmt=false,
       idxOutput.push_back(curIdx);curIdx++;
       ndose++;
       if (rateI > 2 && rateI != 4 && rateI != 5 && flg != 40){
+        // modeled rate/duration
         if (ISNA(camt) || camt == 0.0) {
           if (nevid != 2){
             stop(_("'amt' value NA or 0 for dose event (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
         }
         amt.push_back(camt);
+        if (addLagged) {
+          // add lagged dose for steady state
+          // note that steady state is already calculated with 09 or 19
+          // add lagged dose to continue ss tau
+          // if this is not a calculated rate/dur:
+          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
+          id.push_back(cid);
+          evid.push_back(nevidLag);
+          cmtF.push_back(cmt);
+          amt.push_back(camt);
+          time.push_back(ctime);
+          //ii.push_back(cii);
+          ii.push_back(0.0);
+          idxInput.push_back(-1);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxOutput.push_back(curIdx);curIdx++;
+          ndose++;
+        }
         // turn off
         id.push_back(cid);
         evid.push_back(nevid);
@@ -1526,12 +1601,50 @@ List etTransParse(List inData, List mv, bool addCmt=false,
         ndose++;
       } else if (rateI == 1 || rateI == 2){
         // In this case amt needs to be changed.
+        // specified rate/duration
         dur = camt/rate;
         amt.push_back(rate); // turn on
+        if (addLagged) {
+          // add lagged dose for steady state
+          // note that steady state is already calculated with 09 or 19
+          // add lagged dose to continue ss tau
+          // if this is not a calculated rate/dur:
+          id.push_back(cid);
+          evid.push_back(cevid-flg+8);
+          cmtF.push_back(cmt);
+          amt.push_back(-rate);
+          time.push_back(ctime);
+          ii.push_back(cii);
+          idxInput.push_back(-1);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxOutput.push_back(curIdx);curIdx++;
+          ndose++;
+
+          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
+          id.push_back(cid);
+          evid.push_back(nevidLag);
+          cmtF.push_back(cmt);
+          amt.push_back(rate);
+          time.push_back(ctime);
+          //ii.push_back(cii);
+          ii.push_back(0.0);
+          idxInput.push_back(-1);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxOutput.push_back(curIdx);curIdx++;
+          ndose++;
+        }
         // turn off
         if (flg != 40){
           id.push_back(cid);
-          evid.push_back(cevid);
+          if (flg == 9 || flg == 19) {
+            evid.push_back(cevid-flg+1);
+          } else {
+            evid.push_back(cevid);
+          }
           cmtF.push_back(cmt);
           time.push_back(ctime+dur);
           amt.push_back(-rate);
@@ -1548,15 +1661,47 @@ List etTransParse(List inData, List mv, bool addCmt=false,
           stop(_("'amt' value NA for dose event; (id: %s, amt: %f, evid: %d rxode2 evid: %d, row: %d)"), CHAR(idLvl[cid-1]), camt, inEvid[i], cevid, (int)i+1);
         }
         amt.push_back(camt);
+        if (addLagged) {
+          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
+          id.push_back(cid);
+          evid.push_back(nevidLag);
+          cmtF.push_back(cmt);
+          amt.push_back(camt);
+          time.push_back(ctime);
+          //ii.push_back(cii);
+          ii.push_back(0.0);
+          idxInput.push_back(-1);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxOutput.push_back(curIdx);curIdx++;
+          ndose++;
+        }
       }
       if (cii > 0 && caddl > 0) {
         if (!keepIIadl) {
           ii.pop_back();ii.push_back(0.0);
         }
-        for (j=caddl;j--;){
+        int cevidAddl = cevid;
+        if (addlDropSs) {
+          if (addLagged) {
+            if (rateI != 8 && rateI != 9 && rateI != 6 && rateI != 7) {
+              cevidAddl = nevid = cmt100*100000+rateI*10000+cmt99*100+1;
+              flg = 0;
+            } else {
+              cevidAddl = cmt100*100000+rateI*10000+cmt99*100+1;
+            }
+            addLagged = false;
+            keepIIadl=false;
+          } else if (flg == 10 || flg == 20) {
+            cevidAddl = cmt100*100000+rateI*10000+cmt99*100+1;
+            keepIIadl=false;
+          }
+        }
+        for (j=caddl;j--;) {
           ctime+=cii;
           id.push_back(cid);
-          evid.push_back(cevid);
+          evid.push_back(cevidAddl);
           cmtF.push_back(cmt);
           time.push_back(ctime);
           if (keepIIadl) {
@@ -1564,14 +1709,36 @@ List etTransParse(List inData, List mv, bool addCmt=false,
           } else {
             ii.push_back(0.0);
           }
-          idxInput.push_back(-1);
+          if (addlKeepsCov) {
+            idxInput.push_back(i);
+          } else {
+            idxInput.push_back(-1);
+          }
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
           idxOutput.push_back(curIdx);curIdx++;
           ndose++;
-          if (rateI > 2 && rateI != 4 && rateI != 5){
+          if (rateI > 2 && rateI != 4 && rateI != 5) {
             amt.push_back(camt);
+            if (addLagged) {
+              id.push_back(cid);
+              evid.push_back(nevidLag);
+              cmtF.push_back(cmt);
+              time.push_back(ctime);
+              ii.push_back(0.0);
+              if (addlKeepsCov) {
+                idxInput.push_back(i);
+              } else {
+                idxInput.push_back(-1);
+              }
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(camt);
+              idxOutput.push_back(curIdx);curIdx++;
+              ndose++;
+            }
             // turn off
             id.push_back(cid);
             evid.push_back(nevid);
@@ -1579,7 +1746,11 @@ List etTransParse(List inData, List mv, bool addCmt=false,
             time.push_back(ctime);
             amt.push_back(camt);
             ii.push_back(0.0);
-            idxInput.push_back(-1);
+            if (addlKeepsCov) {
+              idxInput.push_back(i);
+            } else {
+              idxInput.push_back(-1);
+            }
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
             cens.push_back(0);
@@ -1587,13 +1758,62 @@ List etTransParse(List inData, List mv, bool addCmt=false,
             ndose++;
           } else if (rateI == 1 || rateI == 2){
             amt.push_back(rate);
+            if (addLagged) {
+              id.push_back(cid);
+              evid.push_back(cevid-flg+8);
+              cmtF.push_back(cmt);
+              amt.push_back(-rate);
+              time.push_back(ctime);
+              if (keepIIadl) {
+                ii.push_back(cii);
+              } else {
+                ii.push_back(0.0);
+              }
+              //ii.push_back(0.0);
+              if (addlKeepsCov) {
+                idxInput.push_back(i);
+              } else {
+                idxInput.push_back(-1);
+              }
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              idxOutput.push_back(curIdx);curIdx++;
+              ndose++;
+
+              id.push_back(cid);
+              evid.push_back(nevidLag);
+              cmtF.push_back(cmt);
+              time.push_back(ctime);
+              ii.push_back(0.0);
+              if (addlKeepsCov) {
+                idxInput.push_back(i);
+              } else {
+                idxInput.push_back(-1);
+              }
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(rate);
+              idxOutput.push_back(curIdx);curIdx++;
+              ndose++;
+            }
             // turn off
             id.push_back(cid);
-            evid.push_back(cevid);
+            if (flg == 9 || flg == 19) {
+              evid.push_back(cevid-flg+1);
+            } else {
+              evid.push_back(cevidAddl);
+            }
             cmtF.push_back(cmt);
             time.push_back(ctime+dur);
             amt.push_back(-rate);
             ii.push_back(0.0);
+            if (addlKeepsCov) {
+              idxInput.push_back(i);
+            } else {
+              idxInput.push_back(-1);
+            }
             idxInput.push_back(-1);
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
@@ -1602,6 +1822,24 @@ List etTransParse(List inData, List mv, bool addCmt=false,
             ndose++;
           } else {
             amt.push_back(camt);
+            if (addLagged) {
+              id.push_back(cid);
+              evid.push_back(nevidLag);
+              cmtF.push_back(cmt);
+              time.push_back(ctime);
+              ii.push_back(0.0);
+              if (addlKeepsCov) {
+                idxInput.push_back(i);
+              } else {
+                idxInput.push_back(-1);
+              }
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(camt);
+              idxOutput.push_back(curIdx);curIdx++;
+              ndose++;
+            }
           }
         }
       }
@@ -1646,7 +1884,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
           doseId.push_back(allId[j]);
         }
       }
-      Rf_warningcall(R_NilValue, idWarn.c_str());
+      Rf_warningcall(R_NilValue, "%s", idWarn.c_str());
       redoId=true;
     }
   }
@@ -1684,9 +1922,10 @@ List etTransParse(List inData, List mv, bool addCmt=false,
         }
       }
     }
-    if (!_ini0) Rf_warningcall(R_NilValue, idWarn.c_str());
+    if (!_ini0) Rf_warningcall(R_NilValue, "%s", idWarn.c_str());
   }
   if (warnCensNA) Rf_warningcall(R_NilValue, _("censoring missing 'DV' values do not make sense"));
+  if (warnNaTime) Rf_warningcall(R_NilValue, _("missing 'TIME' values do not make sense (ignored)"));
 #ifdef rxSolveT
   REprintf("  Time7: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -1888,11 +2127,12 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   for (j = 0; j < (int)(keepCol.size()); j++){
     SEXP cur = inData[keepCol[j]];
     RObject calc;
-    List curType(2);
+    List curType(3);
     if (TYPEOF(cur) == STRSXP){
       calc = convertId_(cur);
       curType[0] = IntegerVector::create(1);
       curType[1] = calc.attr("levels");
+      curType[2] = etTranGetAttrKeep(cur);
       calc.attr("levels") = R_NilValue;
       calc.attr("class") = R_NilValue;
       inDataFK[j] = as<NumericVector>(calc);
@@ -1900,33 +2140,47 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     } else if (TYPEOF(cur) == INTSXP){
       calc = cur;
       if (calc.hasAttribute("levels")) {
+        // need to check type
+        calc = clone(cur); // make sure they don't affect changes
         curType[0] = IntegerVector::create(2);
         curType[1] = calc.attr("levels");
+        curType[2] = etTranGetAttrKeep(cur);
         calc.attr("levels") = R_NilValue;
         calc.attr("class") = R_NilValue;
         inDataFK[j] = as<NumericVector>(calc);
       } else {
         curType[0] = IntegerVector::create(3);
         curType[1] = R_NilValue;
+        curType[2] = etTranGetAttrKeep(cur);
         inDataFK[j] = as<NumericVector>(calc);
       }
       inDataFKL[j] = curType;
     } else if (TYPEOF(cur) == REALSXP) {
       curType[0] = IntegerVector::create(4);
       curType[1] = R_NilValue;
+      curType[2] = etTranGetAttrKeep(cur);
       inDataFK[j] = cur;
       inDataFKL[j] = curType;
+    } else if (TYPEOF(cur) == LGLSXP) {
+      curType[0]  = IntegerVector::create(5);
+      curType[1]  = R_NilValue;
+      curType[2] = etTranGetAttrKeep(cur);
+      inDataFK[j] = as<NumericVector>(cur);
+      inDataFKL[j] = curType;
     } else {
-      stop("the columns that are kept must be either a string, a factor, an integer number, or a real number");
+      stop(_("the columns that are kept must be either an underlying logical, string, factor, integer number, or real number"));
     }
   }
-
+  int maxItemsPerId = 0;
+  int curItems = 0;
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
       ivTmp = as<IntegerVector>(lst[0]);
       ivTmp[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]){
+        maxItemsPerId = max2(curItems, maxItemsPerId);
+        curItems=0;
         addId=true;
         idx1--;
         if (idx1 < 0) stop(_("number of individuals not calculated correctly"));
@@ -2009,17 +2263,38 @@ List etTransParse(List inData, List mv, bool addCmt=false,
             }
             nvTmp2   = as<NumericVector>(cur);
             nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
-            if (addId){
+            if (addId) {
               nvTmp = as<NumericVector>(lst1[1+j]);
               int iCur = i;
+              int idxOut = i;
+              int idxIn = i;
               double vCur = nvTmp2[idxInput[idxOutput[i]]];
               // Could be NA, look for non NA value OR beginning of subject
-              while (ISNA(vCur) && iCur != 0 && lastId == id[idxOutput[iCur]]) {
+              while (ISNA(vCur) && iCur != 0 &&
+                     id.size() > (idxOut = idxOutput[iCur]) &&
+                     idxOut >= 0 &&
+                     lastId == id[idxOut] &&
+                     idxInput.size() > idxOut &&
+                     nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                     idxIn >= 0) {
+                vCur = nvTmp2[idxIn];
                 iCur--;
-                vCur = nvTmp2[idxInput[idxOutput[i]]];
+              }
+              if (ISNA(vCur)) iCur = i;
+              while (ISNA(vCur) && iCur+1 != (int)(covCol.size()) &&
+                     idxOutput.size() < iCur+1 &&
+                     id.size() > (idxOut = idxOutput[iCur+1]) &&
+                     idxOut >= 0 &&
+                     lastId == id[idxOut] &&
+                     idxInput.size() > idxOut &&
+                     nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                     idxIn >= 0) {
+                vCur = nvTmp2[idxIn];
+                iCur++;
               }
               if (ISNA(vCur)) {
-                Rf_warningcall(R_NilValue,"column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
+                Rf_warningcall(R_NilValue,
+                               "column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
                                CHAR(idLvl[((inId.size() == 0) ? 1 : lastId)-1]));
               }
               nvTmp[idx1] = vCur;
@@ -2027,7 +2302,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
               added = true;
             } else if (sub1[1+j]) {
               nvTmp = as<NumericVector>(lst1[1+j]);
-              double cur1 = nvTmp[idx1];
+              //double cur1 = nvTmp[idx1];
               double cur2 = nvTmp2[idxInput[idxOutput[i]]];
               if (!ISNA(cur2) && nvTmp[idx1] != cur2){
                 sub0[baseSize+j] = true;
@@ -2046,8 +2321,10 @@ List etTransParse(List inData, List mv, bool addCmt=false,
         addId=false;
         added=false;
       }
+      curItems++;
     }
   }
+  maxItemsPerId = max2(curItems, maxItemsPerId);
 #ifdef rxSolveT
   REprintf("  Time11: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -2120,7 +2397,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
   Rf_setAttrib(lst1F, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(lst1F, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER, -nid));
-  List e(29);
+  List e(30);
   RxTransNames;
   e[RxTrans_ndose] = IntegerVector::create(ndose);
   e[RxTrans_nobs]  = IntegerVector::create(nobs);
@@ -2178,6 +2455,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
                IntegerVector::create(NA_INTEGER,-idxOutput.size()+rmAmt));
   Rf_setAttrib(keepL, Rf_install("keepCov"), wrap(keepLc));
   e[RxTrans_keepL] = List::create(_["keepL"]=keepL, _["keepLtype"]=inDataFKL);
+  e[RxTrans_maxItemsPerId] = maxItemsPerId;
   Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
   cls.attr(".rxode2.lst") = e;
   tmp = lstF[0];

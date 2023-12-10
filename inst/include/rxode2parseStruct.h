@@ -3,7 +3,7 @@ typedef struct sbuf {
   int sN;
   int o;                        /* offset of print buffer */
 } sbuf;
-  
+
 typedef struct vLines {
   char *s;
   int sN;
@@ -16,11 +16,16 @@ typedef struct vLines {
   int *os;
 } vLines;
 
+#define rxode2naTimeInputIgnore 1
+#define rxode2naTimeInputWarn   2
+#define rxode2naTimeInputError  3
 
 typedef struct {
   // These options should not change based on an individual solve
   int badSolve;
   int naTime;
+  int naTimeInput;
+  int naTimeInputWarn;
   double ATOL; //absolute error
   double RTOL; //relative error
   double H0;
@@ -189,6 +194,26 @@ typedef struct {
   double *atol2;
   double *ssRtol;
   double *ssAtol;
+  // ignored and pending doses
+  int *ignoredDoses;
+  int *ignoredDosesN;
+  int *ignoredDosesAllocN;
+  int *pendingDoses;
+  int *pendingDosesN;
+  int *pendingDosesAllocN;
+  // extra doses
+  int *extraDoseTimeIdx;
+  int *extraDoseN;
+  int *extraDoseAllocN;
+  double *extraDoseTime;
+  int *extraDoseEvid;
+  double *extraDoseDose;
+  double extraDoseNewXout;
+  int idxExtra; // extra idx
+  int extraSorted; // extra sorted?
+  //double *extraDoseIi; // ii doses unsupported
+  bool lastIsSs2;
+  double *timeThread;
 } rx_solving_options_ind;
 
 typedef struct {
@@ -202,8 +227,8 @@ typedef struct {
   int simflg;
   int nall;
   int nevid9;
-  int nobs;
-  int nobs2;
+  int nobs; // isObs() observations
+  int nobs2; // evid=0 observations
   int nr;
   int add_cov;
   int matrix;
@@ -226,15 +251,8 @@ typedef struct {
   vLines factorNames;
   int factorNs[500];
   int hasFactors;
-  // For forder
-  uint64_t minD;
-  uint64_t maxD;
   int maxAllTimes;
-  uint8_t ***keys;// = NULL; keys per thread
-  int *TMP;
   int *ordId;
-  uint8_t *UGRP;
-  int *nradix;
   double *ypNA;
   bool sample;
   int *par_sample;
@@ -247,6 +265,7 @@ typedef struct {
   int *ovar;
   int hasEvid2;
   int useStdPow;
+  bool ss2cancelAllPending;
 } rx_solve;
 
 
@@ -274,7 +293,7 @@ typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
 typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
 
 typedef void (*t_calc_mtime)(int cSub, double *mtime);
-  
+
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
 
