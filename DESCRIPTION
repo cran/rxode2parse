@@ -1,6 +1,6 @@
 Package: rxode2parse
 Title: Parsing and Code Generation Functions for 'rxode2'
-Version: 2.0.17
+Version: 2.0.18
 Authors@R: c(
     person("Matthew L.", "Fidler", , "matthew.fidler@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-8538-6691")),
@@ -34,8 +34,8 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 Language: en-US
 NeedsCompilation: yes
-RoxygenNote: 7.2.3
-Packaged: 2023-12-09 14:16:25 UTC; matt
+RoxygenNote: 7.3.1
+Packaged: 2024-01-29 00:09:14 UTC; matt
 Author: Matthew L. Fidler [aut, cre] (<https://orcid.org/0000-0001-8538-6691>),
   Wenping Wang [aut],
   Richard Upton [ctb],
@@ -46,4 +46,4 @@ Author: Matthew L. Fidler [aut, cre] (<https://orcid.org/0000-0001-8538-6691>),
   Kevin Ushey [ctb],
   David Cooley [ctb]
 Repository: CRAN
-Date/Publication: 2023-12-10 17:10:02 UTC
+Date/Publication: 2024-01-30 00:00:02 UTC

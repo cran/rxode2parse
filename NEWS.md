@@ -1,3 +1,11 @@
+# rxode2parse 2.0.18
+
+* Removed linear compartment solutions with gradients from rxode2parse
+  (and rxode2) when compiled with intel c++ compiler (since it crashes
+  while compiling).
+
+* Fixed `m1mac` string issues as requested by CRAN
+
 # rxode2parse 2.0.17
 
 * Added ability to query R user functions in a rxode2 model (will
