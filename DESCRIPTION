@@ -1,6 +1,6 @@
 Package: rxode2parse
 Title: Parsing and Code Generation Functions for 'rxode2'
-Version: 2.0.18
+Version: 2.0.19
 Authors@R: c(
     person("Matthew L.", "Fidler", , "matthew.fidler@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-8538-6691")),
@@ -16,7 +16,7 @@ Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
 Description: Provides the parsing needed for 'rxode2' (Wang, Hallow and
     James (2016) <doi:10.1002/psp4.12052>). It also provides the 'stan'
     based advan linear compartment model solutions with gradients
-    (Carpenter et al (2015), <arXiv:1509.07164>) needed in 'nlmixr2'
+    (Carpenter et al (2015), <doi:10.48550/arXiv.1509.07164>) needed in 'nlmixr2'
     (Fidler et al (2019) <doi:10.1002/psp4.12445>).
     This split will reduce computational burden of recompiling 'rxode2'.
 License: GPL (>= 3)
@@ -35,7 +35,7 @@ Encoding: UTF-8
 Language: en-US
 NeedsCompilation: yes
 RoxygenNote: 7.3.1
-Packaged: 2024-01-29 00:09:14 UTC; matt
+Packaged: 2024-05-25 16:56:32 UTC; matt
 Author: Matthew L. Fidler [aut, cre] (<https://orcid.org/0000-0001-8538-6691>),
   Wenping Wang [aut],
   Richard Upton [ctb],
@@ -46,4 +46,4 @@ Author: Matthew L. Fidler [aut, cre] (<https://orcid.org/0000-0001-8538-6691>),
   Kevin Ushey [ctb],
   David Cooley [ctb]
 Repository: CRAN
-Date/Publication: 2024-01-30 00:00:02 UTC
+Date/Publication: 2024-05-25 23:10:02 UTC

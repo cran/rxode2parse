@@ -1,6 +1,6 @@
-c19a239534d6343c945b2b62aac66319 *DESCRIPTION
+701b9307de8d48917c0665b3a6b668c0 *DESCRIPTION
 6b51922a4c0f1df66cfe1a59738ed7fb *NAMESPACE
-be819eaa607bb6f560f8bbee8850d328 *NEWS.md
+6360616c8c774eaa058fb1db6e9281f6 *NEWS.md
 e07eb8059da406242535c6015fa3c08a *R/000.R
 5057bce6b32507b4f13bb2903044eefc *R/RcppExports.R
 28b2131686b7203dc3fc078094c6f5c1 *R/d.R
@@ -27,10 +27,10 @@ bd340ab033b96a49f8e463403bfb588a *inst/CITATION
 ca768ba51175a9edb0ca4db27190217d *inst/include/rxode2parse.h
 2eb74053fe9df3ca219f35f1852303a5 *inst/include/rxode2parseConvertMethod.h
 b5e73993811e754d60977e54d256fa02 *inst/include/rxode2parseGetTime.h
-6ec98a495c427751cf9cee5c19d9847b *inst/include/rxode2parseHandleEvid.h
+dae00d3d63f671297bb27cd6567a4ca0 *inst/include/rxode2parseHandleEvid.h
 8d2bc8d66323b913ae295221e46f3b26 *inst/include/rxode2parseSbuf.h
 40d8149c1d77b752f78aa6b4aefe285d *inst/include/rxode2parseStruct.h
-197b162e1278e1ace20b63848defa6d0 *inst/include/rxode2parseVer.h
+d11f8f91d6c4b10f5bd846afa6b36d1f *inst/include/rxode2parseVer.h
 1c98adcb12facd8880d0b6dfeb11ce36 *inst/include/rxode2parse_control.h
 64107102dcb0e88951f5dd295b51cad8 *inst/include/sbuf.c
 2afa3feca4b11a21292aa38fb68e5b6a *inst/include/timsort.h
@@ -73,9 +73,9 @@ b1c77ccaaa90e2635c16b418b709c0c3 *man/rxode2parseMd5.Rd
 ecf715afdc191e244132414582ed3d2f *src/Makevars.in
 c25cef746ccdfe6f357728e07ecd0541 *src/RcppExports.cpp
 b8f2a73b15c2cf764552db41971ab41c *src/codegen.c
-cc5661fe51f1c26ecb4e981731859472 *src/codegen.h
+cc8949a680bcc4c0bd7f0f6970a0e0ad *src/codegen.h
 fa38c338cd419e7672e1d55a401fe55a *src/codegen2.h
-bdc999e716bc468b33d6a75ce86ef85f *src/etTran.cpp
+bebae40d6e4fba1b904dc231ac50dbfa *src/etTran.cpp
 4aa6dadf7db25bca9bafebbe4432ccbb *src/fast_factor.cpp
 6471496673a500a993ea4fba879cc63f *src/genModelVars.c
 55bc3b77c7f1d7ae4441c5273bcf1a8f *src/genModelVars.h
@@ -126,7 +126,7 @@ b40626e2d5d3d206264942c67abe0e4f *tests/testthat/etTrans-drop.qs
 ce89d3dd5027828e1ebe35d36c4c0e04 *tests/testthat/etTrans1.qs
 b2c2db8774afe69580866927bb79b85e *tests/testthat/test-derived.R
 3e459773311f8d682ed4d0e81846d1f2 *tests/testthat/test-etTrans-1.qs
-ac0014cf223e24fe48b12e74160148a6 *tests/testthat/test-etTrans.R
+bfb6acf2cea9af7149933ca217fb043e *tests/testthat/test-etTrans.R
 53b5ded250afb9026310330833f3247c *tests/testthat/test-lag.R
 033b90ff89a6ffb92595b3830e2ae12b *tests/testthat/test-lincmt-parse.R
 c0a92dc6e30c60f263123ce78eb8c38c *tests/testthat/test-parsing.R
